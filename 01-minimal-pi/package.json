@@ -4,7 +4,7 @@
   "type": "module",
   "description": "最简单的 pi SDK 示例 —— 用 ~30 行代码得到一个能读写 Excel 表格的 AI Agent",
   "scripts": {
-    "start": "node table-agent.mjs"
+    "start": "node recon-agent.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "*"
