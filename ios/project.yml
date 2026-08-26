@@ -1,0 +1,36 @@
+name: TableRecon
+options:
+  bundleIdPrefix: com.monikalnbo
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"       # iPhone + iPad
+targets:
+  TableRecon:
+    type: application
+    platform: iOS
+    sources:
+      - path: TableRecon
+    info:
+      path: TableRecon/Info.plist
+      properties:
+        CFBundleDisplayName: 双表核对
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}               # 必须，否则 iOS 会按小屏兼容模式显示
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        ITSAppUsesNonExemptEncryption: false
+schemes:
+  TableRecon:
+    build:
+      targets:
+        TableRecon: all
+    run:
+      config: Debug
+    archive:
+      config: Release

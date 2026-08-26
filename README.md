@@ -28,10 +28,12 @@ B方表格 ──┘                          ├─ 仅A方有 → 异常①
 
 | 目录 | 是什么 | 怎么用 |
 |---|---|---|
-| `core/` | 核对引擎 recon.py（仅依赖 openpyxl） | CLI 直接跑 / 被下面三者复用 |
+| `core/` | 核对引擎 recon.py（仅依赖 openpyxl） | CLI 直接跑 / 被下面四者复用 |
 | `01-minimal-pi/` | 最简 pi Agent（~25 行 JS） | 自然语言下任务，AI 自己调引擎 |
 | `02-gui/` | 单文件网页图形界面 | 浏览器打开，零安装，数据不出本机 |
 | `03-mcp-server/` | MCP 工具（stdio，2 个 tools） | 接入 pi / Claude / Cursor 等 AI 客户端 |
+| `ios/` | **iPhone/iPad App**（SwiftUI+WKWebView） | GitHub Actions 云端打包 ipa / Xcode 编译 |
+| `TableRecon.swiftpm/` | **Swift Playgrounds 免签版** | 无需 Mac，iPhone/iPad 直接运行 |
 
 ## 快速开始
 
@@ -55,6 +57,11 @@ cd 01-minimal-pi && npm install && node recon-agent.mjs
   "args": ["/path/to/table-toolkit/03-mcp-server/server.py"],
   "env": { "TABLE_RECON_HOME": "/path/to/table-toolkit" }
 }
+
+# 5) iPhone App
+# push 后 GitHub Actions 自动在 macOS 云机打包，Actions 页下载 TableRecon.ipa（未签名）
+# 用 Sideloadly/AltStore 以自己 Apple ID 签名安装；或把 TableRecon.swiftpm 传入 Swift Playgrounds 免签直接运行
+# 详见 ios/README.md 与 TableRecon.swiftpm/README.md
 ```
 
 各子目录有独立 README。`测试_A方.xlsx` / `测试_B方.xlsx` 是自带测试数据（内含区间不符、单边缺失等用例）。
