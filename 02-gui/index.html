@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双表核对工具 · Table Recon</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{--bg:#0f1117;--card:#171a23;--line:#262a36;--txt:#e8eaf0;--dim:#8b90a0;--acc:#4f7cff;--ok:#2ecc71;--bad:#e74c3c;--warn:#f39c12}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;padding:24px}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-size:20px;margin-bottom:4px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:20px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .card h3{font-size:14px;margin-bottom:10px;color:var(--acc)}
+  label{display:block;font-size:12px;color:var(--dim);margin:8px 0 4px}
+  select,input{width:100%;background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:13px}
+  select:focus,input:focus{outline:none;border-color:var(--acc)}
+  .drop{border:2px dashed var(--line);border-radius:8px;padding:18px;text-align:center;color:var(--dim);cursor:pointer;transition:.15s}
+  .drop:hover,.drop.on{border-color:var(--acc);color:var(--txt)}
+  .drop b{color:var(--ok);font-weight:600}
+  .rule{display:grid;grid-template-columns:70px 1fr 1fr 1fr 90px 78px 78px 32px;gap:6px;align-items:end;margin-bottom:8px}
+  .rule label{margin:0 0 2px}
+  .del{background:none;border:none;color:var(--bad);font-size:18px;cursor:pointer;padding-bottom:8px}
+  button.act{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:15px;cursor:pointer;font-weight:600}
+  button.act:disabled{opacity:.4;cursor:not-allowed}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px}
+  .bar{display:flex;gap:12px;align-items:center;margin:16px 0}
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+  .stat b{display:block;font-size:24px}
+  .stat span{font-size:12px;color:var(--dim)}
+  .s-ok b{color:var(--ok)}.s-r b{color:var(--bad)}.s-e b{color:var(--warn)}.s-a b{color:#9b59b6}.s-b b{color:#3498db}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:0;flex-wrap:wrap}
+  .tab{padding:8px 16px;cursor:pointer;color:var(--dim);border-radius:8px 8px 0 0;font-size:13px}
+  .tab.on{background:var(--card);color:var(--txt);border:1px solid var(--line);border-bottom-color:var(--card)}
+  .tab .n{background:var(--bad);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:4px}
+  .tab .n.zero{background:var(--line);color:var(--dim)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;max-width:340px;overflow:hidden;text-overflow:ellipsis}
+  th{color:var(--dim);position:sticky;top:0;background:var(--card);font-weight:600}
+  .tblbox{background:var(--card);border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;max-height:420px;overflow:auto}
+  .why{color:var(--bad)}
+  .hint{font-size:12px;color:var(--dim)}
+  #run-msg{font-size:13px;color:var(--dim)}
+  .unit-sel{font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📊 双表核对工具</h1>
+  <div class="sub">指定关联列（如订单号）+ 自定义核对规则（区间包含 / 精确一致），本地浏览器内完成，数据不上传。导出标红 Excel 报告。</div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>A 方（区间规则里 = 范围一方）</h3>
+      <div class="drop" id="drop-a">点击或拖入 <b>A 方</b> 表格（.xlsx / .xls / .csv）</div>
+      <label>关联列（A）</label><select id="key-a"><option value="">— 先选择文件 —</option></select>
+    </div>
+    <div class="card">
+      <h3>B 方（区间规则里 = 具体值一方）</h3>
+      <div class="drop" id="drop-b">点击或拖入 <b>B 方</b> 表格（.xlsx / .xls / .csv）</div>
+      <label>关联列（B）</label><select id="key-b"><option value="">— 先选择文件 —</option></select>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>核对规则</h3>
+    <div class="rule">
+      <label>类型</label><label>A方列</label><label>B方列</label><label>名称(可选)</label>
+      <label>容差(kg)</label><label>A裸数单位</label><label>B裸数单位</label><span></span>
+    </div>
+    <div id="rules"></div>
+    <button class="ghost" id="add-rule">＋ 添加规则</button>
+    <div class="hint" style="margin-top:8px">
+      <b>区间 range</b>：A方该列是范围（0.5-1kg / 500-800g / 小于1 / 2以上），B方是具体值；B值不在A范围内 = 异常。
+      <b>精确 exact</b>：两列必须完全一致（数值按值、文本忽略大小写空格）。
+      单位自动换算 g/kg/公斤/吨/lb；"裸数单位"用于该列没写单位的数字。
+    </div>
+  </div>
+
+  <div class="bar">
+    <button class="act" id="run" disabled>▶ 开始核对</button>
+    <span id="run-msg"></span>
+  </div>
+
+  <div id="result" style="display:none">
+    <div class="stats" id="stats"></div>
+    <div class="tabs" id="tabs"></div>
+    <div class="tblbox"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+    <div class="bar"><button class="act" id="export">⬇ 导出标红报告 (核对报告.xlsx)</button></div>
+  </div>
+</div>
+
+<input type="file" id="file-a" accept=".xlsx,.xls,.csv" hidden>
+<input type="file" id="file-b" accept=".xlsx,.xls,.csv" hidden>
+
+<script>
+/* ============ 引擎（与 core/recon.py 同逻辑的 JS 版） ============ */
+const UNIT = {mg:1e-6,g:.001,克:.001,kg:1,公斤:1,千克:1,吨:1000,t:1000,lb:.453592,磅:.453592};
+const URE = "(mg|kg|lb|吨|磅|公斤|千克|克|[gt])", NUM = "(-?\\d+(?:\\.\\d+)?)";
+
+const norm = v => v==null ? "" : String(v).normalize("NFKC").trim().toLowerCase()
+  .replace(/ /g,"").replace(/～/g,"~").replace(/[—–]/g,"-");
+
+function parseValue(t, def=1){
+  const s = norm(t); if(!s) return null;
+  const m = s.match(new RegExp(NUM+"\\s*"+URE+"?"));
+  if(!m) return null;
+  const f = m[2] ? UNIT[m[2]] : def;
+  return f==null ? null : parseFloat(m[1])*f;
+}
+function parseRange(t, def=1){
+  const s = norm(t); if(!s) return null;
+  let m = s.match(new RegExp(`^${NUM}\\s*${URE}?[~\\-至]${NUM}\\s*${URE}?`));
+  if(m){
+    let [,n1,u1,n2,u2] = m;
+    let f1 = u1?UNIT[u1]:null, f2 = u2?UNIT[u2]:null;
+    if(f1==null && f2==null) f1=f2=def;
+    else if(f1==null) f1=f2; else if(f2==null) f2=f1;
+    const lo=parseFloat(n1)*f1, hi=parseFloat(n2)*f2;
+    return [Math.min(lo,hi), Math.max(lo,hi)];
+  }
+  if(m = s.match(new RegExp(`(?:小于|低于|不超过|[<≤])\\s*${NUM}\\s*${URE}?`)))
+    return [0, parseFloat(m[1]) * (m[2]?UNIT[m[2]]:def)];
+  if(m = s.match(new RegExp(`(?:大于等于|大于|超过|高于|[>≥])\\s*${NUM}\\s*${URE}?`)))
+    return [parseFloat(m[1]) * (m[2]?UNIT[m[2]]:def), Infinity];
+  if(m = s.match(new RegExp(`^${NUM}\\s*${URE}?以上`)))
+    return [parseFloat(m[1]) * (m[2]?UNIT[m[2]]:def), Infinity];
+  if(m = s.match(new RegExp(`^${NUM}\\s*${URE}?$`)))
+    { const v = parseFloat(m[1])*(m[2]?UNIT[m[2]]:def); return [v,v]; }
+  return null;
+}
+const fmtR = r => r==null?"?":`[${r[0]}, ${r[1]===Infinity?"+∞":r[1]}]`;
+
+function checkRange(va, vb, tol=0, ua=1, ub=1){
+  const ra = parseRange(va,ua), rb = parseRange(vb,ub);
+  if(ra != null){
+    const val = parseValue(vb,ub);
+    if(val != null)
+      return (ra[0]-tol<=val && val<=ra[1]+tol)
+        ? [true, `${val} ∈ ${fmtR(ra)}`]
+        : [false, `${val} ∉ ${fmtR(ra)}`];
+    if(rb != null){
+      const lo=Math.max(ra[0],rb[0]), hi=Math.min(ra[1],rb[1]);
+      return lo-tol<=hi+tol ? [true,`区间相交`] : [false,`区间不相交 ${fmtR(ra)} vs ${fmtR(rb)}`];
+    }
+    return [false, `B方数值无法解析（${vb}）`];
+  }
+  if(rb != null){
+    const val = parseValue(va,ua);
+    if(val != null)
+      return (rb[0]-tol<=val && val<=rb[1]+tol)
+        ? [true, `${val} ∈ ${fmtR(rb)}`] : [false, `${val} ∉ ${fmtR(rb)}`];
+  }
+  const x = parseValue(va,ua), y = parseValue(vb,ub);
+  if(x!=null && y!=null) return Math.abs(x-y)<=tol+1e-9 ? [true,`数值相等`]:[false,`${x} ≠ ${y}`];
+  return [false, "两边都无法解析为数值/区间"];
+}
+function checkExact(va, vb){
+  const x = parseValue(va), y = parseValue(vb);
+  if(x!=null && y!=null) return Math.abs(x-y)<1e-9 ? [true,"数值相等"]:[false,`数值不等: ${va} ≠ ${vb}`];
+  return norm(va)===norm(vb) ? [true,"文本一致"] : [false,`不一致: ${va ?? "∅"} ≠ ${vb ?? "∅"}`];
+}
+
+/* ============ 文件读取 ============ */
+const $ = id => document.getElementById(id);
+const state = {a:null, b:null, result:null};
+
+async function loadFile(file, side){
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:"array"});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:true});
+  const headers = (rows.length ? Object.keys(rows[0]) : []);
+  state[side] = {name:file.name, headers, rows, sheet:wb.SheetNames[0]};
+  $(`drop-${side}`).innerHTML = `<b>${file.name}</b> · ${rows.length} 行 · 列: ${headers.join(" / ")||"（空）"}`;
+  const sel = $(`key-${side}`); sel.innerHTML = "";
+  headers.forEach(h => sel.add(new Option(h,h)));
+  sel.value = headers.find(h => /订单|单号|编号|id|no/i.test(h)) || headers[0] || "";
+  refreshRun();
+}
+["a","b"].forEach(side => {
+  const drop = $(`drop-${side}`), input = $(`file-${side}`);
+  drop.onclick = () => input.click();
+  drop.ondragover = e => {e.preventDefault(); drop.classList.add("on")};
+  drop.ondragleave = () => drop.classList.remove("on");
+  drop.ondrop = e => {e.preventDefault(); drop.classList.remove("on");
+    if(e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0], side)};
+  input.onchange = () => input.files[0] && loadFile(input.files[0], side);
+});
+
+/* ============ 规则行 ============ */
+function ruleRow(preset){
+  const div = document.createElement("div"); div.className = "rule";
+  const type = preset?.type || "range";
+  div.innerHTML = `
+    <select class="r-type"><option value="range"${type==="range"?" selected":""}>区间</option><option value="exact"${type==="exact"?" selected":""}>精确</option></select>
+    <select class="r-ca"></select><select class="r-cb"></select>
+    <input class="r-name" placeholder="如:重量">
+    <input class="r-tol" type="number" step="0.01" min="0" value="${preset?.tolerance ?? 0}">
+    <select class="r-ua unit-sel"><option value="kg">kg</option><option value="g">g</option><option value="吨">吨</option><option value="lb">lb</option></select>
+    <select class="r-ub unit-sel"><option value="kg">kg</option><option value="g">g</option><option value="吨">吨</option><option value="lb">lb</option></select>
+    <button class="del" title="删除">×</button>`;
+  $("rules").appendChild(div);
+  const fill = () => {
+    ["r-ca","r-cb"].forEach(cl => {
+      const sel = div.querySelector("."+cl); sel.innerHTML = "";
+      (state.a?.headers||[]).forEach(h => sel.add(new Option("A:"+h, h)));
+      const g = document.createElement("optgroup"); g.label = "—— B方 ——";
+      (state.b?.headers||[]).forEach(h => g.appendChild(new Option("B:"+h, h)));
+      sel.appendChild(g);
+    });
+    if(preset){ div.querySelector(".r-ca").value = preset.col_a; div.querySelector(".r-cb").value = preset.col_b; }
+  };
+  fill();
+  div.querySelector(".del").onclick = () => {div.remove(); refreshRun()};
+  div.querySelectorAll("select,input").forEach(el => el.onchange = refreshRun);
+  div._fill = fill; return div;
+}
+$("add-rule").onclick = () => ruleRow();
+
+function refreshRun(){
+  $("run").disabled = !(state.a && state.b && $("key-a").value && $("key-b").value && document.querySelector(".rule"));
+}
+
+/* ============ 核对 ============ */
+const keyof = (row,col) => {
+  let v = row?.[col]; if(v==null) return null;
+  if(typeof v==="number" && Number.isInteger(v)) v = String(v);
+  return norm(v) || null;
+};
+
+$("run").onclick = () => {
+  const keyA = $("key-a").value, keyB = $("key-b").value;
+  const rules = [...document.querySelectorAll(".rule")].map((div,i) => ({
+    name: div.querySelector(".r-name").value || `规则${i+1}`,
+    type: div.querySelector(".r-type").value,
+    col_a: div.querySelector(".r-ca").value,
+    col_b: div.querySelector(".r-cb").value,
+    tolerance: parseFloat(div.querySelector(".r-tol").value)||0,
+    unit_a: div.querySelector(".r-ua").value,
+    unit_b: div.querySelector(".r-ub").value,
+  })).filter(r => r.col_a && r.col_b);
+
+  const mapA = new Map(), mapB = new Map();
+  state.a.rows.forEach(r => {const k = keyof(r,keyA); if(k) mapA.set(k,r)});
+  state.b.rows.forEach(r => {const k = keyof(r,keyB); if(k) mapB.set(k,r)});
+
+  const rangeMiss = [], exactMiss = [];
+  let ok = 0;
+  const sorted = [...mapA.keys()].filter(k => mapB.has(k)).sort();
+  for(const k of sorted){
+    let bad = false;
+    for(const rule of rules){
+      const va = mapA.get(k)[rule.col_a], vb = mapB.get(k)[rule.col_b];
+      const [pass,why] = rule.type==="range"
+        ? checkRange(va,vb,rule.tolerance,UNIT[rule.unit_a],UNIT[rule.unit_b])
+        : checkExact(va,vb);
+      if(!pass){
+        bad = true;
+        (rule.type==="range"?rangeMiss:exactMiss)
+          .push({key:k, rule:rule.name, a:va, b:vb, why});
+      }
+    }
+    if(!bad) ok++;
+  }
+  const onlyA = [...mapA.keys()].filter(k => !mapB.has(k)).sort().map(k => ({key:k}));
+  const onlyB = [...mapB.keys()].filter(k => !mapA.has(k)).sort().map(k => ({key:k}));
+
+  state.result = {keyA,keyB,rules,ok,rangeMiss,exactMiss,onlyA,onlyB,mapA,mapB};
+  render();
+};
+
+/* ============ 结果渲染 ============ */
+function render(){
+  const r = state.result;
+  $("result").style.display = "";
+  const cards = [
+    ["s-ok","完全匹配",r.ok],["s-r","区间不符",r.rangeMiss.length],["s-e","项不一致",r.exactMiss.length],
+    ["s-a","仅A方有",r.onlyA.length],["s-b","仅B方有",r.onlyB.length],
+  ];
+  $("stats").innerHTML = cards.map(([c,n,v]) => `<div class="stat ${c}"><b>${v}</b><span>${n}</span></div>`).join("");
+
+  const groups = [
+    ["区间不符", r.rangeMiss, ["关联键","规则","A方值","B方值","说明"], m=>[m.key,m.rule,m.a,m.b,m.why], m=>true],
+    ["项不一致", r.exactMiss, ["关联键","规则","A方值","B方值","说明"], m=>[m.key,m.rule,m.a,m.b,m.why], m=>true],
+    ["仅A方有", r.onlyA, ["关联键(A)"], m=>[m.key], ()=>false],
+    ["仅B方有", r.onlyB, ["关联键(B)"], m=>[m.key], ()=>false],
+  ];
+  $("tabs").innerHTML = groups.map(([name,arr],i) =>
+    `<div class="tab${i===0?" on":""}" data-i="${i}">${name}${arr.length?`<span class="n">${arr.length}</span>`:`<span class="n zero">0</span>`}</div>`).join("");
+  $("tabs").querySelectorAll(".tab").forEach(t => t.onclick = () => {
+    $("tabs").querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+    t.classList.add("on"); drawGroup(groups[+t.dataset.i]);
+  });
+  drawGroup(groups[0]);
+  $("run-msg").textContent = "核对完成，可导出报告";
+}
+function drawGroup([name, arr, heads, mapper, isBad]){
+  const thead = $("tbl").querySelector("thead"), tbody = $("tbl").querySelector("tbody");
+  thead.innerHTML = "<tr>"+heads.map(h=>`<th>${h}</th>`).join("")+"</tr>";
+  tbody.innerHTML = arr.length
+    ? arr.map(m => `<tr>${mapper(m).map((v,i)=>`<td${i===heads.length-1&&isBad(m)?` class="why"`:""}>${v==null?"∅":String(v)}</td>`).join("")}</tr>`).join("")
+    : `<tr><td colspan="${heads.length}" style="text-align:center;color:var(--dim);padding:24px">✓ 无</td></tr>`;
+}
+
+/* ============ 导出标红报告 ============ */
+$("export").onclick = async () => {
+  const r = state.result; if(!r) return;
+  const wb = new ExcelJS.Workbook(); wb.removeWorksheet(wb.addWorksheet());
+  const RED = {fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFC7CE"}},font:{color:{argb:"FF9C0006"}}};
+  const mk = (title, heads) => {
+    const ws = wb.addWorksheet(title);
+    ws.addRow(heads);
+    ws.getRow(1).font = {bold:true}; ws.getRow(1).fill = {type:"pattern",pattern:"solid",fgColor:{argb:"FFDDEBF7"}};
+    ws.views = [{state:"frozen",ySplit:1}];
+    return ws;
+  };
+  const put = (ws, vals, bad) => {
+    const row = ws.addRow(vals);
+    if(bad) row.eachCell(c => {c.fill = RED.fill; c.font = RED.font});
+  };
+  mk("总览",["项目","数量"]).addRows([
+    ["A方文件",state.a.name],["B方文件",state.b.name],
+    ["关联列",`A:${r.keyA} ↔ B:${r.keyB}`],
+    ["完全匹配",r.ok],["区间不符",r.rangeMiss.length],["项不一致",r.exactMiss.length],
+    ["仅A方有",r.onlyA.length],["仅B方有",r.onlyB.length],
+    ["核对规则", r.rules.map(x=>`${x.name}(${x.type}:${x.col_a}↔${x.col_b})`).join("; ")],
+  ]);
+  [["区间不符",r.rangeMiss],["项不一致",r.exactMiss]].forEach(([name,arr]) => {
+    const ws = mk(name,["关联键","规则","A方值","B方值","说明"]);
+    arr.forEach(m => put(ws,[m.key,m.rule,m.a,m.b,m.why],true));
+  });
+  [["仅A方有",r.onlyA,"A"],["仅B方有",r.onlyB,"B"]].forEach(([name,arr]) => {
+    const ws = mk(name,["关联键"]); arr.forEach(m => put(ws,[m.key],true));
+  });
+  const badKeys = new Set([...r.rangeMiss,...r.exactMiss].map(m=>m.key).concat(r.onlyA.map(m=>m.key)));
+  const badKeysB = new Set([...r.rangeMiss,...r.exactMiss].map(m=>m.key).concat(r.onlyB.map(m=>m.key)));
+  [["A方标注",state.a.headers,state.a.rows,r.keyA,badKeys],["B方标注",state.b.headers,state.b.rows,r.keyB,badKeysB]]
+  .forEach(([name,heads,rows,key,bad]) => {
+    const ws = mk(name,heads);
+    rows.forEach(row => put(ws, heads.map(h => row[h]), bad.has(keyof(row,key))));
+  });
+  const buf = await wb.xlsx.writeBuffer();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+  a.download = "核对报告.xlsx"; a.click();
+};
+
+/* 预置一条规则，开箱即用 */
+ruleRow({type:"range", tolerance:0.05});
+</script>
+</body>
+</html>
