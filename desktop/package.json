@@ -1,0 +1,31 @@
+{
+  "name": "table-recon-desktop",
+  "version": "1.0.0",
+  "description": "双表核对 桌面版（Windows / macOS / Linux）",
+  "main": "main.js",
+  "author": "monikalnbo",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.monikalnbo.table-recon",
+    "productName": "双表核对",
+    "artifactName": "TableRecon-${version}-${os}-${arch}.${ext}",
+    "files": ["main.js", "app.html"],
+    "directories": { "output": "dist" },
+    "win": { "target": ["nsis"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
+    "mac": {
+      "target": ["zip"],
+      "category": "public.app-category.productivity",
+      "identity": null
+    },
+    "linux": { "target": ["AppImage"], "category": "Utility" }
+  }
+}

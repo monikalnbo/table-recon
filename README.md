@@ -32,6 +32,7 @@ B方表格 ──┘                          ├─ 仅A方有 → 异常①
 | `01-minimal-pi/` | 最简 pi Agent（~25 行 JS） | 自然语言下任务，AI 自己调引擎 |
 | `02-gui/` | 单文件网页图形界面 | 浏览器打开，零安装，数据不出本机 |
 | `03-mcp-server/` | MCP 工具（stdio，2 个 tools） | 接入 pi / Claude / Cursor 等 AI 客户端 |
+| `desktop/` | **电脑版 App**（Electron，Win / macOS / Linux） | Actions 云打包 exe / Mac zip / AppImage |
 | `ios/` | **iPhone/iPad App**（SwiftUI+WKWebView） | GitHub Actions 云端打包 ipa / Xcode 编译 |
 | `TableRecon.swiftpm/` | **Swift Playgrounds 免签版** | 无需 Mac，iPhone/iPad 直接运行 |
 
@@ -58,7 +59,11 @@ cd 01-minimal-pi && npm install && node recon-agent.mjs
   "env": { "TABLE_RECON_HOME": "/path/to/table-toolkit" }
 }
 
-# 5) iPhone App
+# 5) 桌面版 App（Windows exe / Mac zip / Linux AppImage）
+# Actions → Build Desktop App → 下载对应 Artifact，详见 desktop/README.md
+# Mac：解压 zip 得到「双表核对.app」，右键→打开（未签名）
+
+# 6) iPhone App
 # push 后 GitHub Actions 自动在 macOS 云机打包，Actions 页下载 TableRecon.ipa（未签名）
 # 用 Sideloadly/AltStore 以自己 Apple ID 签名安装；或把 TableRecon.swiftpm 传入 Swift Playgrounds 免签直接运行
 # 详见 ios/README.md 与 TableRecon.swiftpm/README.md
