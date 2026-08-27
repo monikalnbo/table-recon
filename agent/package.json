@@ -1,0 +1,13 @@
+{
+  "name": "pi-excel-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "pi Agent：自定义 baseUrl/apiKey 模型 + 内置 excel MCP（查询/修改 Excel）",
+  "scripts": {
+    "start": "node excel-agent.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@sinclair/typebox": "^0.34"
+  }
+}

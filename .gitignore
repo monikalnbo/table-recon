@@ -2,6 +2,9 @@ node_modules/
 .venv/
 .pi/npm/
 .build-status
+agent/config.json
+agent/node_modules/
+*.models.gen.json
 核对报告.xlsx
 *.log
 __pycache__/

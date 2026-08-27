@@ -31,15 +31,17 @@ B方表格 ──┘                          ├─ 仅A方有 → 异常①
 | 目录 | 是什么 | 怎么用 |
 |---|---|---|
 | `core/` | 核对引擎 recon.py（仅依赖 openpyxl） | CLI 兜底；table-recon MCP 调它 |
-| `.mcp.json` | pi 用的 MCP 注册 | `excel`（读/写表）+ `table-recon`（核对） |
-| `.pi/skills/table-recon/` | pi skill | 告诉 Agent 先读表再核对、不要手写公式 |
-| `01-minimal-pi/` | pi SDK Agent | `node recon-agent.mjs` 自然语言下任务 |
+| `excel-mcp/` | **内置 Excel MCP**（13 工具：查/改/公式/格式/sheet 管理） | 零依赖，`python3 excel-mcp/server.py --selftest` 自测 |
+| `agent/` | **pi Agent**（自定义 baseUrl + apiKey + model） | `node excel-agent.mjs "任务"` |
+| `.mcp.json` | pi 用的 MCP 注册 | `excel`（本仓库内置）+ `table-recon`（核对） |
+| `.pi/skills/table-recon/` | pi skill | 先读表再核对/改表，禁止手写公式对账 |
+| `01-minimal-pi/` | pi SDK 示例 Agent（用已登录 pi） | `node recon-agent.mjs` |
 | `03-mcp-server/` | 业务核对 MCP（stdio） | `compare_tables` / `inspect_sheet` |
 | `02-gui/` | 单文件网页图形界面 | 浏览器打开，离线，数据不出本机 |
 | `desktop/` | 电脑版 App（Electron） | Actions 云打包 exe / Mac zip / AppImage |
 | `ios/` | iPhone/iPad App | Actions 打包 ipa / Xcode |
 | `TableRecon.swiftpm/` | Swift Playgrounds 免签版 | 无需 Mac |
-| `scripts/` | `excel-mcp.sh` / `table-recon-mcp.sh` / `setup-pi.sh` | 启动 MCP、检查环境 |
+| `scripts/` | `setup-pi.sh` | 检查环境 |
 
 ## 快速开始
 
@@ -54,20 +56,10 @@ python3 core/recon.py 测试_A方.xlsx 测试_B方.xlsx \
 # 2) 图形界面
 open 02-gui/index.html        # 或双击，浏览器直接用
 
-# 3) pi Agent（excel MCP 读表 + table-recon MCP 核对）
-bash scripts/setup-pi.sh
-cd 01-minimal-pi && npm install && node recon-agent.mjs
-
-# 4) 把两个 MCP 写进 ~/.pi/agent/mcp.json（或直接用仓库 .mcp.json）
-"excel": {
-  "command": "uvx",
-  "args": ["excel-mcp-server", "stdio"]
-},
-"table-recon": {
-  "command": "python3",
-  "args": ["/path/to/table-toolkit/03-mcp-server/server.py"],
-  "env": { "TABLE_RECON_HOME": "/path/to/table-toolkit" }
-}
+# 3) pi Agent（自定义 baseUrl/apiKey + 内置 excel MCP 查改 Excel）
+pip install -r requirements.txt
+cd agent && cp config.example.json config.json   # 填 baseUrl / apiKey / model
+npm install && node excel-agent.mjs "查询并修改你的 Excel"
 
 # 5) 桌面版 App（Windows exe / Mac zip / Linux AppImage）
 # Actions → Build Desktop App → 下载对应 Artifact，详见 desktop/README.md
@@ -85,11 +77,11 @@ cd 01-minimal-pi && npm install && node recon-agent.mjs
 
 | Server | 工具 | 作用 |
 |---|---|---|
-| **excel**（[haris-musa/excel-mcp-server](https://github.com/haris-musa/excel-mcp-server)） | `get_workbook_metadata` / `read_data_from_excel` / `write_data_to_excel` / `format_range` / … | 通用 Excel 读写、格式、公式、图表 |
-| **table-recon** | `inspect_sheet` | 读列名/行数/前5行（excel MCP 不可用时的退路） |
-| **table-recon** | `compare_tables` | 按关联列 + range/exact 规则核对，产出三类异常和标红报告 |
+| **excel**（内置 `excel-mcp/`，零依赖） | `inspect_workbook` `read_range` `query_rows` `write_data` `append_rows` `update_rows` `set_cells` `apply_formula` `format_range` `find_replace` `delete_rows` `create_workbook` `manage_sheets` | Excel/CSV 查询与修改：条件筛选、查询式批量改、公式、格式标红、sheet 管理 |
+| **table-recon** | `compare_tables` / `inspect_sheet` | 按关联列 + range/exact 规则核对，产出三类异常和标红报告 |
 
-excel MCP 不管对账语义；table-recon 不管把格子画漂亮。pi skill（`.pi/skills/table-recon`）强制走「先读表 → 再 compare_tables」，禁止用公式逐行比对。
+excel MCP 管格子级读写；table-recon 管对账语义。pi skill（`.pi/skills/table-recon`）强制「先看表 → 再动手」。
+想换 [haris-musa/excel-mcp-server](https://github.com/haris-musa/excel-mcp-server)（`uvx excel-mcp-server stdio`）也可以，但内置版无 uv 依赖且支持查询式修改。
 
 ## 为什么核对逻辑自己写？
 
@@ -98,7 +90,6 @@ Excel MCP（haris-musa 4.1k★ 等）强在通用读写/格式化，**没有**�
 
 ## 依赖
 
-- core / table-recon MCP：Python 3.10+，`pip install openpyxl`
-- excel MCP：`uv`（`curl -LsSf https://astral.sh/uv/install.sh | sh`），然后 `uvx excel-mcp-server stdio`
+- core / MCP / agent：Python 3.10+，`pip install -r requirements.txt`（openpyxl）
+- pi Agent：Node 20+，`cd agent && npm install`；模型端点任意 OpenAI 兼容（baseUrl + apiKey 见 `agent/README.md`）；无需 pi-mcp-adapter
 - GUI：现代浏览器（SheetJS + ExcelJS 走 CDN）
-- pi Agent：Node 20+，pi CLI 或 `npm install @earendil-works/pi-coding-agent`，建议 `pi install npm:pi-mcp-adapter`

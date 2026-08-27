@@ -1,0 +1,10 @@
+{
+  "baseUrl": "https://api.siliconflow.cn/v1",
+  "apiKey": "$SILICONFLOW_API_KEY",
+  "model": "Qwen/Qwen2.5-7B-Instruct",
+  "provider": "custom-llm",
+  "api": "openai-completions",
+  "reasoning": false,
+  "contextWindow": 128000,
+  "maxTokens": 8192
+}
