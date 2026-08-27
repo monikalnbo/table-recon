@@ -1,0 +1,14 @@
+{
+  "name": "recon-js",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "双表核对引擎（canonical JS，双挂载：进程内工具 / stdio MCP server）",
+  "main": "index.mjs",
+  "bin": {
+    "table-recon-mcp": "server.mjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "xlsx": "file:../excel-mcp-js/vendor/xlsx-0.20.3"
+  }
+}

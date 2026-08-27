@@ -53,8 +53,9 @@ UNIT_FACTOR = {
     "kg": 1.0, "公斤": 1.0, "千克": 1.0,
     "吨": 1000.0, "t": 1000.0,
     "lb": 0.453592, "磅": 0.453592,
+    "斤": 0.5,  # 中国电商高频单位（canonical 双修：recon-js 同步）
 }
-_UNIT_RE = r"(mg|kg|lb|吨|磅|公斤|千克|克|[gt])"
+_UNIT_RE = r"(mg|kg|lb|吨|磅|公斤|千克|克|斤|[gt])"
 
 
 def _norm(text) -> str:

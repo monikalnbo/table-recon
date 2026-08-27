@@ -14,3 +14,9 @@ ios/TableRecon.xcodeproj/
 *.ipa
 desktop/dist/
 agent/models-store.json
+desktop/dist/
+desktop/node_modules/
+excel-mcp-js/node_modules/
+recon-js/node_modules/
+excel-mcp-js/vendor/
+desktop/app-src/

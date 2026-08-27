@@ -1,0 +1,14 @@
+{
+  "name": "excel-mcp-js",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Excel 13 工具（canonical JS，双挂载：进程内工具 / stdio MCP server）",
+  "main": "tools.mjs",
+  "bin": {
+    "excel-mcp": "server.mjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "xlsx": "file:./vendor/xlsx-0.20.3"
+  }
+}

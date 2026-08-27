@@ -69,7 +69,7 @@
 
   <div class="card">
     <h3>核对规则</h3>
-    <div class="rule">
+    <div class="rule-head" style="display:grid;grid-template-columns:70px 1fr 1fr 1fr 90px 78px 78px 32px;gap:6px;margin-bottom:8px">
       <label>类型</label><label>A方列</label><label>B方列</label><label>名称(可选)</label>
       <label>容差(kg)</label><label>A裸数单位</label><label>B裸数单位</label><span></span>
     </div>
@@ -181,6 +181,7 @@ async function loadFile(file, side){
   const sel = $(`key-${side}`); sel.innerHTML = "";
   headers.forEach(h => sel.add(new Option(h,h)));
   sel.value = headers.find(h => /订单|单号|编号|id|no/i.test(h)) || headers[0] || "";
+  document.dispatchEvent(new Event("files-loaded"));  // 通知规则行重填列下拉
   refreshRun();
 }
 ["a","b"].forEach(side => {
@@ -207,16 +208,15 @@ function ruleRow(preset){
     <button class="del" title="删除">×</button>`;
   $("rules").appendChild(div);
   const fill = () => {
-    ["r-ca","r-cb"].forEach(cl => {
-      const sel = div.querySelector("."+cl); sel.innerHTML = "";
-      (state.a?.headers||[]).forEach(h => sel.add(new Option("A:"+h, h)));
-      const g = document.createElement("optgroup"); g.label = "—— B方 ——";
-      (state.b?.headers||[]).forEach(h => g.appendChild(new Option("B:"+h, h)));
-      sel.appendChild(g);
-    });
-    if(preset){ div.querySelector(".r-ca").value = preset.col_a; div.querySelector(".r-cb").value = preset.col_b; }
+    // A 列只出 A 方列，B 列只出 B 方列（修「混列」病根：A 列混 B 方列极易配错规则）
+    const ca = div.querySelector(".r-ca"), cb = div.querySelector(".r-cb");
+    ca.innerHTML = ""; cb.innerHTML = "";
+    (state.a?.headers||[]).forEach(h => ca.add(new Option(h, h)));
+    (state.b?.headers||[]).forEach(h => cb.add(new Option(h, h)));
+    if(preset){ ca.value = preset.col_a; cb.value = preset.col_b; }
   };
   fill();
+  document.addEventListener("files-loaded", () => fill());  // 文件加载后重填（修「选后空下拉」）
   div.querySelector(".del").onclick = () => {div.remove(); refreshRun()};
   div.querySelectorAll("select,input").forEach(el => el.onchange = refreshRun);
   div._fill = fill; return div;
@@ -224,7 +224,7 @@ function ruleRow(preset){
 $("add-rule").onclick = () => ruleRow();
 
 function refreshRun(){
-  $("run").disabled = !(state.a && state.b && $("key-a").value && $("key-b").value && document.querySelector(".rule"));
+  $("run").disabled = !(state.a && state.b && $("key-a").value && $("key-b").value && document.querySelector("#rules .rule"));
 }
 
 /* ============ 核对 ============ */
@@ -235,8 +235,9 @@ const keyof = (row,col) => {
 };
 
 $("run").onclick = () => {
+  if (!(state.a && state.b)) { $("run-msg").textContent = "请先选择 A/B 两份表格"; return; }  // 守卫：未选文件防御（B5 附）
   const keyA = $("key-a").value, keyB = $("key-b").value;
-  const rules = [...document.querySelectorAll(".rule")].map((div,i) => ({
+  const rules = [...document.querySelectorAll("#rules .rule")].map((div,i) => ({
     name: div.querySelector(".r-name").value || `规则${i+1}`,
     type: div.querySelector(".r-type").value,
     col_a: div.querySelector(".r-ca").value,
