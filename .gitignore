@@ -1,4 +1,7 @@
 node_modules/
+.venv/
+.pi/npm/
+.build-status
 核对报告.xlsx
 *.log
 __pycache__/

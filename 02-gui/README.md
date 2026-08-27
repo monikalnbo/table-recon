@@ -1,6 +1,6 @@
 # 02 · 双表核对图形界面
 
-单文件网页（`index.html`），浏览器直接打开即用，**数据不出本机**。
+单文件网页（`index.html`），浏览器直接打开即用，**数据不出本机**。这是离线路径；AI 核对走 pi + excel MCP + table-recon MCP（见根 README / `01-minimal-pi`）。
 
 ## 功能
 

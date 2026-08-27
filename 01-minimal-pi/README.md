@@ -1,34 +1,30 @@
-# 01 · 最简单的 pi Agent（双表核对版）
+# 01 · pi Agent（双表核对）
 
-用 **~25 行代码**得到一个能自己完成双表核对的 AI Agent。
+用 pi SDK 起一个 Agent：读本仓库 skill，调 **excel MCP** 看表，调 **table-recon MCP** 核对。
 
-pi SDK 的 `createAgentSession()` 默认自带 `read` / `write` / `edit` / `bash` 四个工具，
-AI 自己就会调用 `../core/recon.py` 做核对；如果注册了本仓库的 table-recon MCP server，
-AI 还会自动用上 MCP 工具（两种方式都能跑，殊途同归）。
+```
+自然语言
+    ↓
+pi Agent  +  skill table-recon
+    ├─ excel MCP          读结构 / 预览 / 写格式
+    └─ table-recon MCP    compare_tables → 标红报告
+```
 
-## 运行
+## 前置
+
+1. 已登录 pi（或设置好模型 API key）
+2. 已装 [pi-mcp-adapter](https://www.npmjs.com/package/pi-mcp-adapter)（`pi install npm:pi-mcp-adapter`）
+3. 已装 `uv`（excel MCP 用 `uvx excel-mcp-server stdio`）
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+4. `~/.pi/agent/mcp.json` 或仓库 `.mcp.json` 里同时注册 `excel` 与 `table-recon`（见根 README）
 
 ```bash
 pip install openpyxl
-npm install                        # 安装 pi SDK
-export ANTHROPIC_API_KEY=...      # 或已在 pi 里 /login 的订阅
-
-node recon-agent.mjs              # 默认任务：核对仓库自带的测试表
-node recon-agent.mjs "用 A.xlsx 和 B.xlsx 按订单号核对，重量range、金额exact，容差0.05"
+npm install
+node recon-agent.mjs
+node recon-agent.mjs "用 A.xlsx 和 B.xlsx，按订单号核对重量区间和数量"
 ```
 
-## 核心就这么短
-
-```js
-import { createAgentSession } from "@earendil-works/pi-coding-agent";
-
-const { session } = await createAgentSession();
-session.subscribe((e) => {
-  if (e.type === "message_update" && e.assistantMessageEvent.type === "text_delta")
-    process.stdout.write(e.assistantMessageEvent.delta);
-});
-await session.prompt("用 ../core/recon.py 核对两份表，规则是……");
-session.dispose();
-```
-
-自然语言即可描述规则（关联列、区间/精确、容差、单位），AI 会翻译成 recon.py 的参数。
+Agent 会先 `read` skill，再用 MCP。不要指望它去手写核对代码。

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "excel": {
+      "command": "uvx",
+      "args": ["excel-mcp-server", "stdio"]
+    },
+    "table-recon": {
+      "command": "python3",
+      "args": ["03-mcp-server/server.py"]
+    }
+  }
+}

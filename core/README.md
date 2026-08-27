@@ -1,6 +1,7 @@
 # core · 双表核对引擎
 
-`recon.py` —— 唯一的核心，CLI 可直接跑，也被 01（pi Agent）/ 02（GUI 同源 JS）/ 03（MCP）复用。
+`recon.py` —— 核对引擎。CLI 可直接跑；**table-recon MCP** 调它做 `compare_tables`。
+pi Agent 的正常路径是 excel MCP 读表 + table-recon MCP 核对，不要再让 AI 用 bash 拼 `recon.py` 参数（MCP 挂了才用 CLI）。
 
 ```bash
 python3 recon.py A.xlsx B.xlsx \

@@ -3,6 +3,8 @@
 把双表核对引擎暴露为 MCP 工具（stdio），供 pi / Claude / Cursor / Codex 等任意 MCP 客户端调用。
 仅依赖 `openpyxl`，单文件 `server.py`。
 
+和 **excel MCP**（haris-musa `excel-mcp-server`）一起用：excel 负责读结构/预览/写格式，本 server 只做 `compare_tables` 业务核对。pi skill 在 `.pi/skills/table-recon/SKILL.md`。
+
 ## 工具
 
 ### inspect_sheet

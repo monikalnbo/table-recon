@@ -1,7 +1,9 @@
 # Table Recon · 双表核对工具箱
 
 > 两份 Excel，指定一列（如订单号）做关联，自定义核对规则，一键找出所有差异。
-> 同一套核心引擎，三种用法：**AI Agent（pi SDK）** / **图形界面（浏览器）** / **MCP 工具（任意 AI 客户端）**。
+>
+> AI 路径：**pi Agent + excel MCP（读表）+ table-recon MCP（核对）**。  
+> 离线路径：浏览器 GUI / 桌面 App / iOS（不经过 pi）。
 
 ## 核对逻辑
 
@@ -28,13 +30,16 @@ B方表格 ──┘                          ├─ 仅A方有 → 异常①
 
 | 目录 | 是什么 | 怎么用 |
 |---|---|---|
-| `core/` | 核对引擎 recon.py（仅依赖 openpyxl） | CLI 直接跑 / 被下面四者复用 |
-| `01-minimal-pi/` | 最简 pi Agent（~25 行 JS） | 自然语言下任务，AI 自己调引擎 |
-| `02-gui/` | 单文件网页图形界面 | 浏览器打开，零安装，数据不出本机 |
-| `03-mcp-server/` | MCP 工具（stdio，2 个 tools） | 接入 pi / Claude / Cursor 等 AI 客户端 |
-| `desktop/` | **电脑版 App**（Electron，Win / macOS / Linux） | Actions 云打包 exe / Mac zip / AppImage |
-| `ios/` | **iPhone/iPad App**（SwiftUI+WKWebView） | GitHub Actions 云端打包 ipa / Xcode 编译 |
-| `TableRecon.swiftpm/` | **Swift Playgrounds 免签版** | 无需 Mac，iPhone/iPad 直接运行 |
+| `core/` | 核对引擎 recon.py（仅依赖 openpyxl） | CLI 兜底；table-recon MCP 调它 |
+| `.mcp.json` | pi 用的 MCP 注册 | `excel`（读/写表）+ `table-recon`（核对） |
+| `.pi/skills/table-recon/` | pi skill | 告诉 Agent 先读表再核对、不要手写公式 |
+| `01-minimal-pi/` | pi SDK Agent | `node recon-agent.mjs` 自然语言下任务 |
+| `03-mcp-server/` | 业务核对 MCP（stdio） | `compare_tables` / `inspect_sheet` |
+| `02-gui/` | 单文件网页图形界面 | 浏览器打开，离线，数据不出本机 |
+| `desktop/` | 电脑版 App（Electron） | Actions 云打包 exe / Mac zip / AppImage |
+| `ios/` | iPhone/iPad App | Actions 打包 ipa / Xcode |
+| `TableRecon.swiftpm/` | Swift Playgrounds 免签版 | 无需 Mac |
+| `scripts/` | `excel-mcp.sh` / `table-recon-mcp.sh` / `setup-pi.sh` | 启动 MCP、检查环境 |
 
 ## 快速开始
 
@@ -49,10 +54,15 @@ python3 core/recon.py 测试_A方.xlsx 测试_B方.xlsx \
 # 2) 图形界面
 open 02-gui/index.html        # 或双击，浏览器直接用
 
-# 3) AI Agent
+# 3) pi Agent（excel MCP 读表 + table-recon MCP 核对）
+bash scripts/setup-pi.sh
 cd 01-minimal-pi && npm install && node recon-agent.mjs
 
-# 4) MCP 工具（~/.pi/agent/mcp.json）
+# 4) 把两个 MCP 写进 ~/.pi/agent/mcp.json（或直接用仓库 .mcp.json）
+"excel": {
+  "command": "uvx",
+  "args": ["excel-mcp-server", "stdio"]
+},
 "table-recon": {
   "command": "python3",
   "args": ["/path/to/table-toolkit/03-mcp-server/server.py"],
@@ -71,21 +81,24 @@ cd 01-minimal-pi && npm install && node recon-agent.mjs
 
 各子目录有独立 README。`测试_A方.xlsx` / `测试_B方.xlsx` 是自带测试数据（内含区间不符、单边缺失等用例）。
 
-## MCP 工具一览
+## MCP 分工
 
-| 工具 | 作用 |
-|---|---|
-| `inspect_sheet` | 读表头/行数/前5行预览，帮 AI 选列 |
-| `compare_tables` | 双表核对：关联列 + 规则列表 → 异常清单 JSON + 标红报告 |
+| Server | 工具 | 作用 |
+|---|---|---|
+| **excel**（[haris-musa/excel-mcp-server](https://github.com/haris-musa/excel-mcp-server)） | `get_workbook_metadata` / `read_data_from_excel` / `write_data_to_excel` / `format_range` / … | 通用 Excel 读写、格式、公式、图表 |
+| **table-recon** | `inspect_sheet` | 读列名/行数/前5行（excel MCP 不可用时的退路） |
+| **table-recon** | `compare_tables` | 按关联列 + range/exact 规则核对，产出三类异常和标红报告 |
 
-## 为什么自己写而不用现成的？
+excel MCP 不管对账语义；table-recon 不管把格子画漂亮。pi skill（`.pi/skills/table-recon`）强制走「先读表 → 再 compare_tables」，禁止用公式逐行比对。
 
-调研过 GitHub 主流 Excel MCP（haris-musa 4.1k★、negokaz 1k★、sbroenne 570★ 等），
-它们强在通用 Excel 读写/格式化，但**都没有内置"双表按键关联 + 区间方向性核对 + 单位换算 + 三类异常"这种业务语义**，
-交给 AI 逐步拼单元格既慢又易错。所以核心逻辑固化成本引擎，AI 只负责理解需求 → 填参数 → 解读结果。
+## 为什么核对逻辑自己写？
+
+Excel MCP（haris-musa 4.1k★ 等）强在通用读写/格式化，**没有**「按键关联 + 区间方向性核对 + 单位换算 + 三类异常」。
+那部分固化在 `core/recon.py`，AI 只负责理解需求 → 填参数 → 解读结果。
 
 ## 依赖
 
-- core / MCP：Python 3.10+，`pip install openpyxl`
+- core / table-recon MCP：Python 3.10+，`pip install openpyxl`
+- excel MCP：`uv`（`curl -LsSf https://astral.sh/uv/install.sh | sh`），然后 `uvx excel-mcp-server stdio`
 - GUI：现代浏览器（SheetJS + ExcelJS 走 CDN）
-- pi Agent：Node 20+，`npm install @earendil-works/pi-coding-agent`
+- pi Agent：Node 20+，pi CLI 或 `npm install @earendil-works/pi-coding-agent`，建议 `pi install npm:pi-mcp-adapter`
