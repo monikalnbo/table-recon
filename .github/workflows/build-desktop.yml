@@ -34,6 +34,7 @@ jobs:
       - name: Install & Package (electron-builder)
         working-directory: desktop
         run: |
+          node scripts/sync-packages.mjs
           npm install
           npx electron-builder ${{ matrix.args }} --publish never
         env:
