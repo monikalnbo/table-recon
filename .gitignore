@@ -13,3 +13,4 @@ ios/build/
 ios/TableRecon.xcodeproj/
 *.ipa
 desktop/dist/
+agent/models-store.json
